@@ -40,3 +40,6 @@ class YoloDataset(data.Dataset):
             self.labels.append(torch.LongTensor(label))
 
         self.num_samples = len(self.boxes)
+
+    def __len__(self):
+        return self.num_samples
