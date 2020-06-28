@@ -1,2 +1,5 @@
-__pycache__
+*/__pycache_/_
 *.swp
+*/*.swp
+__pycache__/
+pre-train/
