@@ -3,7 +3,7 @@
 
 ## Pre-training
 ### 1. pretraing for 20 convolution layers using ImageNet 2012 datasets.
- - using 1000 classes, 800 images for each class.
+ - using 980 classes, 800 images for each class.
 
 ### 2. Still downloading dataset...
 
