@@ -2,4 +2,5 @@
 *.swp
 */*.swp
 __pycache__/
-pre-train/
+pre-train/dataset/*
+pre-train/Imagenet*
