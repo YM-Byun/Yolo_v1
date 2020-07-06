@@ -4,3 +4,4 @@
 __pycache__/
 pre-train/dataset/*
 pre-train/weight/
+dataset/
