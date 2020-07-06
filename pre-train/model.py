@@ -48,6 +48,13 @@ class Yolo_pretrain(nn.Module):
             *self.make_conv_layer(1024, 512, 1, 1, 0),
             *self.make_conv_layer(512, 1024, 3, 1, 1)
         )
+
+        self.features = nn.Sequential(
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.layer4,
+            self.layer5)
         
         self.fc = nn.Sequential(
             nn.AvgPool2d(7),
@@ -76,11 +83,7 @@ class Yolo_pretrain(nn.Module):
         return layer
         
     def forward(self, x):
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        x = self.layer5(x)
+        x = self.features(x)
        
         if not self.conv_only:
             x = self.fc(x)

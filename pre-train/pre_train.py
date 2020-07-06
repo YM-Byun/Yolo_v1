@@ -1,31 +1,23 @@
-# In Paper,
-# learning_rate = 0.001
-# num_epochs = 135
-# batch_size = 64
-# momentum = 0.9
-# decay = 0.0005
 print ("Importing pytorch now...\n")
 
 import argparse
 import math
+import os
 import torch
 import torch.nn as nn
+import torch.backends.cudnn as cudnn
 import numpy as np
 import torchvision.transforms as transforms
 import time
+import shutil
+
 from model import Yolo_pretrain
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
+from datetime import datetime
 
-weight_path = ""
-dataset_path = ""
-decay = 0.0005
-momentum = 0.9
-batch_size = 64
-num_epochs = 135
-learning_rate = 0.0
 
-def set_argument():
+def get_argument_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-e', '--epochs', type=int,
@@ -35,9 +27,13 @@ def set_argument():
     parser.add_argument('-w', '--weight-path', type=str,
             help="pre-trained weight path")
 
-    parser.add_argument('--dataset-path', type=str,
-            default='./dataset',
-            help='dataset path')
+    parser.add_argument('--train-path', type=str,
+            default='./dataset/train',
+            help='train dataset path')
+
+    parser.add_argument('--val-path', type=str,
+            default='./dataset/val',
+            help='val dataset path')
 
     parser.add_argument('--lr', type=float,
             default=0.001,
@@ -55,173 +51,268 @@ def set_argument():
             default=64,
             help='Batch size')
 
+    parser.add_argument('--log_dir', type=str,
+            default='./log/',
+            help='log dir')
+
+    parser.add_argument('--resume', type=str,
+            default=None,
+            help='checkpoint path')
+
+    parser.add_argument('--workers', type=int,
+            default=12,
+            help="num of workers")
+
+
+    return parser
+
+
+def main():
+    parser = get_argument_parser()
+
     args = parser.parse_args()
 
-    num_epochs = args.epochs
-    
-    weight_path = args.weight_path
-    dataset_path = args.dataset_path
+    log_file = args.log_dir + datetime.now().strftime('%m%d_%H:%M:%S')
 
-    decay = args.weight_decay
-    momentum = args.momentum
-    batch_size = args.batch_size
+    model = Yolo_pretrain()
+    best_acc = 0
+    start_epoch = 0
+    is_cuda = torch.cuda.is_available()
 
-    learning_rate = args.lr
+    if is_cuda:
+        model.cuda()
 
-def get_lr(epoch):
-    lr = 0
+    model.features = torch.nn.DataParallel(model.features)
 
-    if epoch == 0:
-        lr = 0.001
+    criterion = nn.CrossEntropyLoss().cuda()
 
-    elif epoch < 75:
-        lr = 0.01
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                        momentum=args.momentum,
+                        weight_decay=args.weight_decay)
 
-    elif epoch < 105:
-        lr = 0.001
+    # Load checkpoint
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print (f"loading checkpoint [{args.resume}]")
 
-    elif epoch < 135:
-        lr = 0.0001
+            checkpoint = torch.load(args.resume)
+            start_epoch = checkpoint['epoch']
+            best_acc = checkpoint['best_acc']
+            model.load_state_dict(checkpoint['state_dcit'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
 
-    else:
-        return
+            print (f"\nLoaded checkpoint at epoch {args.epochs}!\n")
 
-    return lr
+        else:
+            print ("Checkpoint file not found!\n")
 
-def run_epoch(device, model, train_data, test_data, optimizer, criterion, epoch_num):
-    print ("Start train dataset")
+        print ("--------------------------------------")
 
-    train_loss = 0.0
-    val_loss = 0.0
-    train_acc = 0.0
-    
-    start_time = time.time()
+        cudnn.benchmark = True
 
-    cnt = 1
-    for img_i, label_i in train_data:
-        if cnt < 1000:
-            if (cnt % 100 == 0):
-                print (f"Train (epoch {epoch_num}) | current {cnt} / {len(train_data)}")
-        elif cnt >= 1000:
-            if (cnt % 500 == 0):
-                print (f"Train (epoch {epoch_num}) | current {cnt} / {len(train_data)}")
-        elif cnt == len(test_data) - 1:
-                print (f"Train (epoch {epoch_num}) | current {cnt} / {len(train_data)}")
-        img_i, label_i = img_i.to(device), label_i.to(device)
+
+    # Load datasets
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225])
+
+    train_dataset = ImageFolder(
+            args.train_path,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize]))
+
+    val_dataset = ImageFolder(
+            args.val_path,
+            transforms.Compose([
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize]))
+
+    train_loader = DataLoader(
+            train_dataset, batch_size=args.batch_size, shuffle=True,
+            num_workers=args.workers, pin_memory=True)
+
+    val_loader = DataLoader(
+            val_dataset, batch_size=args.batch_size, shuffle=False,
+            num_workers=args.workers, pin_memory=True)
+
+    print ("\nLoaded datasets")
+
+    for epoch in range(start_epoch, args.epochs):
+        adjust_learning_rate(optimizer, epoch, args)
+        
+        train(train_loader, model, criterion, optimizer, epoch, args)
+
+        acc1= validate(val_loader, model, criterion, epoch, args)
+
+        is_best = acc1 > best_acc
+        best_acc = max(acc1, best_acc)
+
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'state_dict': model.state_dict(),
+            'best_acc': best_acc,
+            'optimizer': optimizer.state_dict(),
+        }, is_best, log_file)
+
+
+def adjust_learning_rate(optimizer, epoch, args):
+
+    lr = args.lr * (0.1 ** (epoch // 30))
+
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
+# Compute & store the average and current value
+class AverageMeter(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+def train(train_loader, model, criterion, optimizer, epoch, args):
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
+
+    model.train()
+
+    end = time.time()
+
+    isPrint = False
+
+    for i, (data, target) in enumerate(train_loader):
+        data_time.update(time.time() - end)
+
+        target = target.cuda(None, non_blocking=True)
+
+        output = model(data)
+        loss = criterion(output, target)
+
+        acc1, acc5 = accuracy(output, target, topk=(1,5))
+        losses.update(loss.item(), data.size(0))
+        top1.update(acc1[0], data.size(0))
+        top5.update(acc5[0], data.size(0))
+
 
         optimizer.zero_grad()
-
-        # Forward
-        label_predicted = model.forward(img_i)
-
-        # Loss computatoin
-        loss = criterion(label_predicted, label_i.view(-1))
-
-        # Backward
         loss.backward()
-
         optimizer.step()
 
-        train_loss += loss.item()
-        pred = label_predicted.data.max(1, keepdim=True)[1]
-        train_acc += pred.eq(label_i.data.view_as(pred)).sum()
+        batch_time.update(time.time() - end)
+        end = time.time()
 
-        
-        cnt += 1
+        if i < 1000:
+            if i % 100 == 0:
+                isPrint = True
+        elif i == len(train_loader) - 1:
+            isPrint = True
 
-    total_test_loss = 0
-    cnt = 1
+        else:
+            if i % 500 == 0:
+                isPrint = True
 
-    print ("Start test dataset")
-    for img_j, label_j in test_data:
+        if isPrint:
+            print (f"Epoch [{epoch}] [{i+1} / {len(train_loader)}] ")
+            print (f"\tTime {batch_time.val:.3f} ({batch_time.avg:.3f})")
+            print (f"\tData {data_time.val:.3f} ({data_time.avg:.3f})")
+            print (f"\tLoss {losses.val:.4f} ({losses.avg:.4f})")
+            print (f"\tAcc1 {top1.val:.3f} ({top1.avg:.3f})")
+            print (f"\tAcc5 {top5.val:.3f} ({top5.avg:.3f})\n\n")
 
-        if cnt < 1000:
-            if (cnt % 100 == 0):
-                print (f"Test (epoch {epoch_num}) | current {cnt} / {len(test_data)}")
+            isPrint = False
 
-        elif cnt >= 1000:
-            if (cnt % 500 == 0):
-                print (f"Test (epoch {epoch_num}) | current {cnt} / {len(test_data)}")
+def validate(val_loader, model, criterion, epoch, args):
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
 
-        elif cnt == len(test_data) - 1:
-                print (f"Test (epoch {epoch_num}) | current {cnt} / {len(test_data)}")
+    model.eval()
 
-        img_j, label_j = img_j.to(device), label_j.to(device)
+    isPrint = False
 
-        with torch.autograd.no_grad():
-            label_predicted = model.forward(img_j)
-            val_loss += criterion(label_predicted, label_j.view(-1))
-        cnt += 1
+    with torch.no_grad():
+        end = time.time()
 
-    end_time = time.time()
+        for i, (data, target) in enumerate(val_loader):
+            target = target.cuda(None, non_blocking=True)
 
-    return train_loss, val_loss, (train_acc / float(len(train_data)) * 100.0),(end_time - start_time)
+        output = model(data)
+        loss = criterion(output, target)
 
-if __name__ == "__main__":
-    set_argument()
+        acc1, acc5 = accuracy(output, target, topk=(1,5))
+        losses.update(loss.item(), data.size(0))
+        top1.update(acc1[0], data.size(0))
+        top5.update(acc5[0], data.size(0))
 
-    yolo_net = Yolo_pretrain()
-    device = torch.device('cpu')
+        batch_time.update(time.time() - end)
+        end = time.time()
 
-    if torch.cuda.is_available():
-        yolo_net.cuda()
-        device = torch.device('cuda')
+        if i < 1000:
+            if i % 100 == 0:
+                isPrint = True
+        elif i == len(val_loader) - 1:
+            isPrint = True
 
-        print ("Using CUDA")
+        else:
+            if i % 500 == 0:
+                isPrint = True
 
+        if isPrint:
+            print (f"Test [{epoch}] [{i+1} / {len(val_loader)}]")
+            print (f"\tTime {batch_time.val:.3f} ({batch_time.avg:.3f})")
+            print (f"\tLoss {losses.val:.4f} ({losses.avg:.4f})")
+            print (f"\tAcc1 {top1.val:.3f} ({top1.avg:.3f})")
+            print (f"\tAcc5 {top5.val:.3f} ({top5.avg:.3f})\n")
+            isPrint = False
 
-    # load pre-trained weight
-    if weight_path != "":
-        yolo_net.load_state_dict(torch.load(weight_path))
+    print ("==========================================\n")
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(yolo_net.parameters(),
-            lr=learning_rate, momentum=momentum, weight_decay=decay)
+    return top1.avg
 
-    yolo_net.train()
+def save_checkpoint(state, is_best, log_dir, filename='checkpoint.pth.tar'):
+    path = log_dir + "_" + filename
 
-    # Dataset Load
-    print("Load Imagenet Dataset ...")
-    transform = transforms.Compose([
-    transforms.Resize((448, 448)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    torch.save(state, path)
 
-    train_dataset = ImageFolder(root='./dataset/train', transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+    if is_best:
+        path_best = log_dir + "_" +  'model_best.pth.tar'
+        shutil.copyfile(path, path_best)
 
-    test_dataset = ImageFolder(root='./dataset/test', transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
-    print ("ImageNet Dataset Load Complete!")
-    print (f"Train labels: {len(train_dataset.classes)}")
-    print (f"Train data amount: {len(train_dataset)}\n")
-    print (f"Test labels: {len(test_dataset.classes)}")
-    print (f"Test data amount: {len(test_dataset)}\n\n")
+def accuracy(output, target, topk=(1,)):
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
 
-    records = []
-    for i, epoch in enumerate(range(num_epochs)):
-        print ("-----------------------------------------")
-        print (f"Epoch {epoch + 1} / {num_epochs}")
-        train_loss, val_loss, train_acc, response = run_epoch(device, yolo_net, train_loader, test_loader, optimizer, criterion, i+1)
-        print (f"\tTrain loss: {train_loss:.3f}")
-        print (f"\tValid loss: {val_loss:.3f}")
-        print (f"\tTrain acc: {train_acc:.3f}")
-        print (f"\tResponse time: {response}")
+        _,pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-        recode = [train_loss, val_loss, train_acc, response]
-        records.append(recode)
+        res = []
 
-        if i % 10 == 0:
-            torch.save(yolo_net.state_dict(), "weight.pth")
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0/batch_size))
 
-    for i, r in enumerate(records):
-        print ("\n-----------------------------------------")
-        print (f" For Epoch {i + 1} / {len(records)}")
-        print (f"\tTrain Loss: {r[0]:.3f}")
-        print (f"\tValid Loss: {r[1]:.3f}")
-        print (f"\tTrain acc: {r[2]:.3f}")
-        print (f"\tResponse time: {r[3]}")
+        return res
 
-    torch.save(yolo_net.state_dict(), "weight.pth")
-
-    print ("Save model weight")
+if __name__ == '__main__':
+    main()
