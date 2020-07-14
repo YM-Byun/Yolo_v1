@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.autograd import Variable
+from torch.autograd import Variable
 
 class Yolo_loss(nn.Module):
     def __init__(self, S=7, B=2, C=20, l_coord=5.0, l_noobj=0.5):
@@ -49,7 +49,7 @@ class Yolo_loss(nn.Module):
         union = area1 + area2 - intersection
         iou = intersection / union
 
-        retrun iou
+        return iou
 
 
     def forward(self, pred_tensor, target_tensor):
@@ -106,7 +106,7 @@ class Yolo_loss(nn.Module):
 
 
         # Compute loss for the cells with object
-        coord_response_mask = torch.cuda.ByteTensor(bbox_target.size())fill_(0)
+        coord_response_mask = torch.cuda.ByteTensor(bbox_target.size()).fill_(0)
         bbox_target_iou = torch.zeros(bbox_target.size()).cuda()
 
         # Choose the predict bbox having the highest IoU for each target bbox
