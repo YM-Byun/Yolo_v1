@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from util_layers import Squeeze
+from pre_train.util_layers import Squeeze
 
 class Yolo_pretrain(nn.Module):
     def __init__(self, conv_only=False, init_weight=True):

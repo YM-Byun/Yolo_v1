@@ -6,7 +6,8 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 
 from yolo_v1 import Yolo_v1
-from pre-train.model import Yolo_pretrain
+from loss import Yolo_loss
+from pre_train.model import Yolo_pretrain
 
 S = 0
 B = 0
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     dst_state_dict = pretrain_model.state_dict()
 
     for key in dst_state_dict.keys():
-        print ("Loading weight of", key, ,"\n")
+        print ("Loading weight of", key ,"\n")
 
         dst_state_dict[key] = src_state_dict[key]
 
@@ -121,3 +122,7 @@ if __name__ == "__main__":
         yolo.cuda()
 
     # Loss func
+    criterion = Yolo_loss(S=S, B=B, C=C)
+    optimizer = torch.optim.SGD(yolo.parameters(), lr=init_lr, momentum=momentum, weight_decay=weight_decay)
+
+    # Load Pasacl-VOC daaset

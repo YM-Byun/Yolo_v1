@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from pre-train.util_layers import Flatten
-
 class Yolo_v1(nn.Module):
     def __init__(self, features, S, B, C):
         super(Yolo_v1, self).__init__()
@@ -34,7 +32,7 @@ class Yolo_v1(nn.Module):
             nn.Linear(7*7*1024, 4096),
             nn.LeakyReLU(),
             nn.Dropout(p=0.5),
-            nn.Linear(4096, self.S * self.S * (self.B * 5 + self.C))
+            nn.Linear(4096, self.S * self.S * (self.B * 5 + self.C)),
             nn.Sigmode()
         )
         
