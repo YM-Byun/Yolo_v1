@@ -2,6 +2,6 @@
 *.swp
 */*.swp
 __pycache__/
-pre-train/dataset/*
-pre-train/weight/
+pre_train/dataset/*
+pre_train/weight/
 dataset/
