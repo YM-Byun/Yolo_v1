@@ -111,6 +111,16 @@ def isPrint(i):
 
     return isPrint
 
+def save_checkpoint(state, epoch, log_dir):
+    filenames = os.listdir(log_dir)
+
+    for name in filenames:
+        if name.startwith('checkpoint'):
+            os.remove(name)
+            break
+
+    checkpoint_file = log_dir + "/checkpoint_" + str(epoch + 1) + ".pth"
+    torch.save(state, checkpoint_file)
 
 if __name__ == "__main__":
     args = set_argument()
@@ -185,7 +195,23 @@ if __name__ == "__main__":
 
     best_val_loss = np.inf
 
-    for epoch in range(num_epochs):
+    start_epoch = 0
+
+    # Load checkpoint
+
+    if args.resume:
+        if os.path.isfile(args.resume):
+            checkpoint = torch.load(args.resume)
+            start_epoch = checkpoint['epoch'] - 1
+            best_val_loss = checkpoint['best_val_loss']
+            yolo.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
+            print ("Loaded checkpoint!")
+            print (f"Start epoch from {start_epoch + 1}")
+            print (f"Lastest best val loss: {best_val_loss}\n")
+
+    for epoch in range(start_epoch, num_epochs):
         print (f'\nStarting epoch {epoch + 1} / {num_epochs}')
 
         yolo.train()
@@ -263,7 +289,7 @@ if __name__ == "__main__":
             if is_cuda:
                 imgs, target = imgs.cuda(), target.cuda()
 
-            with torch.no_grad()
+            with torch.no_grad():
                 preds = yolo(imgs)
 
             loss = criterion(preds, targets)
@@ -280,7 +306,7 @@ if __name__ == "__main__":
             if is_cuda:
                 imgs, target = imgs.cuda(), target.cuda()
 
-            with torch.no_grad()
+            with torch.no_grad():
                 preds = yolo(imgs)
 
             loss = criterion(preds, targets)
@@ -296,6 +322,12 @@ if __name__ == "__main__":
         logfile.flush()
         
         torch.save(yolo.state_dict(), os.path.join(log_dir, 'model_latest.pth'))
+        save_checkpoint({
+            'epoch': epoch+1,
+            'state_dict': yolo.state_dict(),
+            'best_val_loss': best_val_loss,
+            'optimizer': optimizer.state_dict()},
+            epoch+1, log_dir)
 
         if best_val_loss > val_loss:
             best_val_loss = val_loss
@@ -303,5 +335,5 @@ if __name__ == "__main__":
 
         print (f'\nEpoch [{epoch+1}/{num_epochs}], Val loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f}')
 
-   writer.close()
-   logfile.close()
+    writer.close()
+    logfile.close()
