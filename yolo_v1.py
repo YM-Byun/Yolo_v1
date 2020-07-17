@@ -54,7 +54,7 @@ class Yolo_v1(nn.Module):
         return layer
         
     def forward(self, x):
-        x = self.featrues(x)
+        x = self.features(x)
         x = self.conv_layer(x)
         x = self.fc(x)
         

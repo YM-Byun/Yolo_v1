@@ -41,7 +41,7 @@ class Yolo_loss(nn.Module):
         area2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
         # shape: [N, ] / [M, ]
 
-        area1 = area1.unsqueeze(1).exapnd_as(intersection)
+        area1 = area1.unsqueeze(1).expand_as(intersection)
         area2 = area2.unsqueeze(0).expand_as(intersection)
         # [N, ] -> [N, 1] -> [N, M]
         # [M, ] -> [1, M] -> [N, M]
@@ -77,8 +77,8 @@ class Yolo_loss(nn.Module):
 
         # Bounding box info
         # shape: [Number of object, x/y/h/w/c]
-        bbox_pred = coord_pred[:, :5*B].view(-1, 5)
-        bbox_target = coord_target[:, :5*B].view(-1, 5)
+        bbox_pred = coord_pred[:, :5*B].contiguous().view(-1, 5)
+        bbox_target = coord_target[:, :5*B].contiguous().view(-1, 5)
 
         # Class info
         # shape: [Number of object, class]
@@ -114,7 +114,7 @@ class Yolo_loss(nn.Module):
             pred = bbox_pred[i:i+B] # predicted B box in i th cell
 
             # Because target b boxes contained by each cell are identical in this implementation, it is enought to extract the first one.
-            target = bbox_target[i].view(-1, N)
+            target = bbox_target[i].view(-1, 5)
             # shape: [B, 5(x, y, w, h, c)]
 
             pred_xyxy = Variable(torch.FloatTensor(pred.size()))
@@ -146,7 +146,7 @@ class Yolo_loss(nn.Module):
         target_iou = bbox_target_iou[coord_response_mask].view(-1, 5)
 
 
-        loss_xy = F.mse_loss(bbox_pred_responsep[:, :2], bbox_target_response[:, :2], reduction='sum')
+        loss_xy = F.mse_loss(bbox_pred_response[:, :2], bbox_target_response[:, :2], reduction='sum')
         loss_wh = F.mse_loss(torch.sqrt(bbox_pred_response[:, 2:4]), torch.sqrt(bbox_target_response[:, 2:4]), reduction='sum')
         loss_obj = F.mse_loss(bbox_pred_response[:, 4], target_iou[:, 4], reduction='sum')
         loss_class = F.mse_loss(class_pred, class_target, reduction='sum')

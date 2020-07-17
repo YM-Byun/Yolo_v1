@@ -3,6 +3,8 @@ import math
 import os
 import torch
 import numpy as np
+import warning
+
 from voc import VOCDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -132,6 +134,7 @@ def save_checkpoint(state, epoch, log_dir):
 
 if __name__ == "__main__":
     args = set_argument()
+    warning.filterwarning(action='ignore')
 
     is_cuda = torch.cuda.is_available()
 
@@ -176,13 +179,13 @@ if __name__ == "__main__":
 
 
     yolo = Yolo_v1(pretrain_model.features)
-    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layer)
+    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layer, device_ids=[args.gpu_num])
 
     if is_cuda:
-        yolo.cuda()
+        yolo.cuda(args.gpu_num)
 
     # Loss func
-    criterion = Yolo_loss(S=S, B=B, C=C)
+    criterion = Yolo_loss()
     optimizer = torch.optim.SGD(yolo.parameters(), lr=init_lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     log_dir = args.result_path
@@ -225,15 +228,15 @@ if __name__ == "__main__":
             targets = Variable(targets)
 
             if is_cuda:
-                imgs = imgs.cuda()
-                targets = targets.cuda()
+                imgs = imgs.cuda(args.gpu_num, non_blocking=True)
+                targets = targets.cuda(args.gpu_num, non_blocking=True)
 
             # Forawrd
             preds = yolo(imgs)
             loss = criterion(preds, targets)
             loss_iter = loss.item()
             total_loss += loss_iter * batch_size_iter
-            toatl_batch += batch_size_iter
+            total_batch += batch_size_iter
 
             # Backward
             optimizer.zero_grad()
@@ -254,7 +257,7 @@ if __name__ == "__main__":
             imgs, target = Variable(imgs), Variable(targets)
 
             if is_cuda:
-                imgs, target = imgs.cuda(), target.cuda()
+                imgs, target = imgs.cuda(args.gpu_num), target.cuda(args.gpu_num)
 
             with torch.no_grad():
                 preds = yolo(imgs)
