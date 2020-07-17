@@ -45,8 +45,8 @@ def set_argument():
             default=('./dataset/voc2007.txt', './dataset/voc2012.txt'),
             help='train label path')
 
-    parser.add_argument('--val-label', type=tuple,
-            default=('./dataset/voc2007.txt', './dataset/voc2012.txt'),
+    parser.add_argument('--val-label', type=str,
+            default='./dataset/voc2007.txt',
             help='validation dataset path')
 
 
@@ -78,9 +78,9 @@ def set_argument():
     return args
 
 
-def update_lr(optimizer, epoch, burin_base, burin_exp=4.0):
+def update_lr(optimizer, epoch, burnin_base, burnin_exp=4.0):
     if epoch == 0:
-        lr = learning_rate + (base_lr - init_lr) * math.pow(burin_base, burnin_exp)
+        lr = init_lr + (base_lr - init_lr) * math.pow(burnin_base, burnin_exp)
 
     elif epoch == 1:
         lr = base_lr
@@ -219,7 +219,7 @@ if __name__ == "__main__":
             update_lr(optimizer, epoch, float(i) / float(len(train_loader) - 1))
             lr = get_lr(optimizer)
 
-            batch_size_iter = img.size(0)
+            batch_size_iter = imgs.size(0)
 
             imgs = Variable(imgs)
             targets = Variable(targets)
