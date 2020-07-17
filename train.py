@@ -3,7 +3,6 @@ import math
 import os
 import torch
 import numpy as np
-import warnings
 from voc import VOCDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -133,7 +132,6 @@ def save_checkpoint(state, epoch, log_dir):
 
 if __name__ == "__main__":
     args = set_argument()
-    warnings.filterwarnings("ignore")
 
     is_cuda = torch.cuda.is_available()
 
@@ -163,8 +161,6 @@ if __name__ == "__main__":
     dst_state_dict = pretrain_model.state_dict()
 
     for key in dst_state_dict.keys():
-        print ("Loading weight of", key ,"\n")
-
         dst_state_dict[key] = src_state_dict[key]
 
     pretrain_model.load_state_dict(dst_state_dict)

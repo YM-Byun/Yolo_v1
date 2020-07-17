@@ -92,7 +92,7 @@ class Yolo_loss(nn.Module):
         noobj_target = target_tensor[noobj_mask].view(-1, N)
 
         # Confidence of no objects
-        noobj_conf_mask = torch.cuda.ByteTensor(noobj_pred.size()).fill_(0)
+        noobj_conf_mask = torch.cuda.BoolTensor(noobj_pred.size()).fill_(0)
 
         # 4th index: x, y, w, h, "c"
         # b*5 = b th bounding box
@@ -106,7 +106,7 @@ class Yolo_loss(nn.Module):
 
 
         # Compute loss for the cells with object
-        coord_response_mask = torch.cuda.ByteTensor(bbox_target.size()).fill_(0)
+        coord_response_mask = torch.cuda.BoolTensor(bbox_target.size()).fill_(0)
         bbox_target_iou = torch.zeros(bbox_target.size()).cuda()
 
         # Choose the predict bbox having the highest IoU for each target bbox
