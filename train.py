@@ -3,7 +3,7 @@ import math
 import os
 import torch
 import numpy as np
-from torchvision import datasets
+from voc import VOCDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torchvision.transforms as transforms
@@ -15,10 +15,6 @@ from pre_train.model import Yolo_pretrain
 S = 0
 B = 0
 C = 0
-decay = 0.0005
-momentum = 0.9
-batch_size = 64
-num_epochs = 135
 init_lr = 0.001
 base_lr = 0.01
 
@@ -41,13 +37,18 @@ def set_argument():
             default='pre_train/weight/model_best.pth.tar',
             help="pre-trained weight path")
 
-    parser.add_argument('--train-path', type=str,
-            default='./dataset/train',
-            help='train dataset path')
+    parser.add_argument('--dataset-path', type=str,
+            default='./dataset/VOC_all_images',
+            help='dataset path')
 
-    parser.add_argument('--val-path', type=str,
-            default='./dataset/val',
+    parser.add_argument('--train-label', type=tuple,
+            default=('./dataset/voc2007.txt', './dataset/voc2012.txt'),
+            help='train label path')
+
+    parser.add_argument('--val-label', type=tuple,
+            default=('./dataset/voc2007.txt', './dataset/voc2012.txt'),
             help='validation dataset path')
+
 
     parser.add_argument('-d', '--weight-decay', type=float,
             default=0.0005, 
@@ -64,6 +65,13 @@ def set_argument():
     parser.add_argument('--result-path', type=str,
             default="./result",
             help="result path")
+
+    parser.add_argument('--resume', type=bool,
+            default=False)
+
+    parser.add_argument('--gpu-num', type=int,
+            default=-1,
+            help='Set specific GPU number')
 
     args = parser.parse_args()
 
@@ -95,14 +103,14 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-def isPrint(i):
+def isPrint(i, length):
     isPrint = False
 
     if i < 1000:
         if i % 100 == 0:
             isPrint = True
 
-    elif i == len(train_2007_loader) - 1:
+    elif i == length - 1:
         isPrint = True
 
     else:
@@ -127,39 +135,27 @@ if __name__ == "__main__":
 
     is_cuda = torch.cuda.is_available()
 
-    normalize = transforms.Normalize(mean=[0.485, 0.485, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+    if args.gpu_num != -1:
+        device = torch.device(f'cuda:{args.gpu_num}' if is_cuda else 'cpu')
+        torch.cuda.set_device(device)
 
-    transform = transforms.Compose([transforms.RandomHorizontalFlip()])
+    train_dataset = VOCDataset(True, args.dataset_path, args.train_label)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
+            shuffle=True, num_workers=8)
 
-    train_2012_dataset = datasets.VOCSegmentation(root='dataset/train', year='2012', image_set='train', download=True, transforms=transform)
+    val_dataset = VOCDataset(False, args.dataset_path, args.val_label)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size,
+            shuffle=False, num_workers=8)
 
-    train_2012_loader = DataLoader(train_2012_dataset, batch_size=batch_size, shuffle=True, num_workers=12)
+    print ("Loaded dataset!")
+    print (f"\tNumber of training images: {len(train_dataset)}")
+    print (f"\tNumber of validation images: {len(val_dataset)}\n")
 
-    print ("loaded 2012 train dataset\n")
-
-    val_2012_dataset = datasets.VOCSegmentation(root='dataset/val', year='2012', image_set='val', download=True, transforms=transform)
-
-    val_2012_loader = DataLoader(val_2012_dataset, batch_size=batch_size, shuffle=False, num_workers=12)
-
-    print ("loaded 2012 val dataset\n")
-
-    train_2007_dataset = datasets.VOCSegmentation(root='dataset/train', year='2007', image_set='train', download=True, transforms=transform)
-
-    train_2007_loader = DataLoader(train_2007_dataset, batch_size=batch_size, shuffle=True, num_workers=12)
-
-    print ("loaded 2007 train dataset\n")
-
-    val_2007_dataset = datasets.VOCSegmentation(root='dataset/val', year='2007', image_set='val', download=True, transforms=transform)
-
-    val_2007_loader = DataLoader(val_2007_dataset, batch_size=batch_size, shuffle=True, num_workers=12)
-
-    print ("loaded 2007 val dataset\n")
 
     print ("=======================================\n\n")
 
     pretrain_model = Yolo_pretrain(conv_only=True, init_weight=True)
-    pretrain_model = torch.nn.DataParallel(pretrain_model.features)
+    pretrain_model.features = torch.nn.DataParallel(pretrain_model.features)
 
     src_state_dict = torch.load(args.pretrain_weight_path)['state_dict']
     dst_state_dict = pretrain_model.state_dict()
@@ -173,8 +169,8 @@ if __name__ == "__main__":
 
     print ("Loaded pretrain weight\n\n")
 
-    print (f"Number of Train images: {len(train_2012_dataset) + len(train_2007_dataset)}")
-    print (f"Number of Validation images: {len(val_2012_dataset) + len(val_2007_dataset)}\n")
+    print (f"Number of Train images: {len(train_dataset)}")
+    print (f"Number of Validation images: {len(val_dataset)}\n")
 
     print ("======================================\n")
 
@@ -187,7 +183,7 @@ if __name__ == "__main__":
 
     # Loss func
     criterion = Yolo_loss(S=S, B=B, C=C)
-    optimizer = torch.optim.SGD(yolo.parameters(), lr=init_lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(yolo.parameters(), lr=init_lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     log_dir = args.result_path
 
@@ -211,16 +207,16 @@ if __name__ == "__main__":
             print (f"Start epoch from {start_epoch + 1}")
             print (f"Lastest best val loss: {best_val_loss}\n")
 
-    for epoch in range(start_epoch, num_epochs):
-        print (f'\nStarting epoch {epoch + 1} / {num_epochs}')
+    for epoch in range(start_epoch, args.epochs):
+        print (f'\nStarting epoch {epoch + 1} / {args.epochs}')
 
         yolo.train()
         total_loss = 0.0
         total_batch = 0
 
-        for i, (imgs, targets) in enumerate(train_2007_loader):
+        for i, (imgs, targets) in enumerate(train_loader):
 
-            update_lr(optimizer, epoch, float(i) / float(len(train_2007_loader) - 1))
+            update_lr(optimizer, epoch, float(i) / float(len(train_loader) - 1))
             lr = get_lr(optimizer)
 
             batch_size_iter = img.size(0)
@@ -244,62 +240,16 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            if isPrint(i):
-                print (f'\tEpoch(2007) [{epoch+1}/{num_epochs}]  |  Iter [{i+1}/{len(train_2007_loader)}]  |  LR: {lr:.6f},  Loss: {loss_iter:.4f}, Avg Loss: {total_loss / float(total_batch)}')
+            if isPrint(i, len(train_loader)):
+                print (f'\tEpoch [{epoch+1}/{args.epochs}]  |  Iter [{i+1}/{len(train_loader)}]  |  LR: {lr:.6f},  Loss: {loss_iter:.4f}, Avg Loss: {total_loss / float(total_batch)}')
 
-
-        for i, (imgs, targets) in enumerate(train_2012_loader):
-
-            update_lr(optimizer, epoch, float(i) / float(len(train_2007_loader) - 1))
-            lr = get_lr(optimizer)
-
-            batch_size_iter = img.size(0)
-
-            imgs = Variable(imgs)
-            targets = Variable(targets)
-
-            if is_cuda:
-                imgs = imgs.cuda()
-                targets = targets.cuda()
-
-            # Forawrd
-            preds = yolo(imgs)
-            loss = criterion(preds, targets)
-            loss_iter = loss.item()
-            total_loss += loss_iter * batch_size_iter
-            toatl_batch += batch_size_iter
-
-            # Backward
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            if isPrint(i):
-                print (f'\tEpoch(2012) [{epoch+1}/{num_epochs}]  |  Iter [{i+1}/{len(train_2007_loader)}]  |  LR: {lr:.6f},  Loss: {loss_iter:.4f}, Avg Loss: {total_loss / float(total_batch)}')
 
         # val
         yolo.eval()
         val_loss = 0.0
         total_batch = 0
 
-        for i, (imgs, targets) in enumerate(val_2007_loader):
-            batch_size_iter = imgs.size(0)
-            imgs, target = Variable(imgs), Variable(targets)
-
-            if is_cuda:
-                imgs, target = imgs.cuda(), target.cuda()
-
-            with torch.no_grad():
-                preds = yolo(imgs)
-
-            loss = criterion(preds, targets)
-            loss_iter = loss.item()
-
-            val_loss += loss_iter * batch_size_iter
-            total_batch += batch_size_iter
-
-
-        for i, (imgs, targets) in enumerate(val_2012_loader):
+        for i, (imgs, targets) in enumerate(val_loader):
             batch_size_iter = imgs.size(0)
             imgs, target = Variable(imgs), Variable(targets)
 
@@ -333,7 +283,7 @@ if __name__ == "__main__":
             best_val_loss = val_loss
             torch.save(yolo.state_dict(), os.path.join(log_dir, 'model_best.pth'))
 
-        print (f'\nEpoch [{epoch+1}/{num_epochs}], Val loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f}')
+        print (f'\nEpoch [{epoch+1}/{args.epochs}], Val loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f}')
 
     writer.close()
     logfile.close()

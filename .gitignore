@@ -4,4 +4,4 @@
 __pycache__/
 pre_train/dataset/*
 pre_train/weight/
-dataset/
+dataset/VOC_all_images/
