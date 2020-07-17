@@ -3,7 +3,6 @@ import math
 import os
 import torch
 import numpy as np
-import warning
 
 from voc import VOCDataset
 from torch.utils.data import DataLoader
@@ -134,7 +133,6 @@ def save_checkpoint(state, epoch, log_dir):
 
 if __name__ == "__main__":
     args = set_argument()
-    warning.filterwarning(action='ignore')
 
     is_cuda = torch.cuda.is_available()
 
