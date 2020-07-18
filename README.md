@@ -4,8 +4,7 @@
 ## Pre-training
 ### 1. pretraing for 20 convolution layers using ImageNet 2012 datasets.
  - using 980 classes, 800 images for each class.
-
-### 2. 55~58% Acc
+ - 55~58% Acc
 
 
 ## Training
