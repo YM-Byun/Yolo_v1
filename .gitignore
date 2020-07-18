@@ -4,8 +4,10 @@
 __pycache__/
 pre_train/dataset/*
 pre_train/weight/
-dataset/*/images
-dataset/*/annotations
+dataset/train/images/**
+dataset/train/annotations/**
+dataset/val/images/**
+dataset/val/annotations/**
 
 # For Test
 !dataset/train/images/008961.jpg
