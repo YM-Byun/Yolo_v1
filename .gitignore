@@ -1,7 +1,23 @@
-*/__pycache_/_
+*/__pycache_/
 *.swp
 */*.swp
 __pycache__/
 pre_train/dataset/*
 pre_train/weight/
-dataset/VOC_all_images/
+dataset/*/images
+dataset/*/annotations
+
+# For Test
+!dataset/train/images/008961.jpg
+!dataset/train/images/2010_000770.jpg
+!dataset/train/images/2012_004210.jpg
+!dataset/train/annotations/008961.xml
+!dataset/train/annotations/2010_000770.xml
+!dataset/train/annotations/2012_004210.xml
+
+!dataset/val/images/008044.jpg
+!dataset/val/images/2010_000724.jpg
+!dataset/val/images/2012_004272.jpg
+!dataset/val/annotations/008044.xml
+!dataset/val/annotations/2010_000724.xml
+!dataset/val/annotations/2012_004272.xml
