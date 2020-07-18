@@ -3,7 +3,7 @@ import math
 import os
 import torch
 import numpy as np
-from voc import VOCDataset
+from dataset.PascalVOC import VOCDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torchvision.transforms as transforms
@@ -37,18 +37,25 @@ def set_argument():
             default='pre_train/weight/model_best.pth.tar',
             help="pre-trained weight path")
 
-    parser.add_argument('--dataset-path', type=str,
-            default='./dataset/VOC_all_images',
-            help='dataset path')
+    parser.add_argument('--train-images', type=str,
+            default='./dataset/train/images',
+            help='train images path')
 
-    parser.add_argument('--train-label', type=tuple,
-            default=('./dataset/voc2007.txt', './dataset/voc2012.txt'),
-            help='train label path')
+    parser.add_argument('--train-annotations', type=str,
+            default='./dataset/train/annotations',
+            help='train annotations path')
 
-    parser.add_argument('--val-label', type=str,
-            default='./dataset/voc2007.txt',
-            help='validation dataset path')
+    parser.add_argument('--val-images', type=str,
+            default='./dataset/val/images',
+            help='validation images path')
 
+    parser.add_argument('--val-annotations', type=str,
+            default='./dataset/val/annotations',
+            help='validation annotations path')
+
+    parser.add_argument("--class-label", type=str,
+            default='./dataset/class_list.txt',
+            help='class label txt file')
 
     parser.add_argument('-d', '--weight-decay', type=float,
             default=0.0005, 
@@ -139,11 +146,13 @@ if __name__ == "__main__":
         device = torch.device(f'cuda:{args.gpu_num}' if is_cuda else 'cpu')
         torch.cuda.set_device(device)
 
-    train_dataset = VOCDataset(True, args.dataset_path, args.train_label)
+    train_dataset = VOCDataset(is_train=True, image_dir=args.train_images,
+            annotation_dir=args.train_annotations, label_txt=args.class_label)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
             shuffle=True, num_workers=8)
 
-    val_dataset = VOCDataset(False, args.dataset_path, args.val_label)
+    val_dataset = VOCDataset(is_train=False, image_dir=args.val_images,
+            annotation_dir=args.val_annotations, label_txt=args.class_label)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size,
             shuffle=False, num_workers=8)
 

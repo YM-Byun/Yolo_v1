@@ -9,7 +9,7 @@ import cv2
 
 class VOCDataset(Dataset):
 
-    def __init__(self, is_train, image_dir, label_txt, image_size=448, grid_size=7, num_bboxes=2, num_classes=20):
+    def __init__(self, is_train, image_dir, annotation_dir, label_txt, image_size=448, grid_size=7, num_bboxes=2, num_classes=20):
         self.is_train = is_train
         self.image_size = image_size
 
@@ -22,39 +22,108 @@ class VOCDataset(Dataset):
 
         self.to_tensor = transforms.ToTensor()
 
-        if isinstance(label_txt, list) or isinstance(label_txt, tuple):
-            # cat multiple list files together.
-            # This is useful for VOC2007/VOC2012 combination.
-            tmp_file = '/tmp/label.txt'
-            os.system('cat %s > %s' % (' '.join(label_txt), tmp_file))
-            label_txt = tmp_file
-
         self.paths, self.boxes, self.labels = [], [], []
 
-        with open(label_txt) as f:
-            lines = f.readlines()
+        file_list = os.listdir(image_dir)
 
-        for line in lines:
-            splitted = line.strip().split()
+        # Load class_label info
+        label_info = self.get_class_label_dict(label_txt)
 
-            fname = splitted[0]
+        for image in file_list:
+
+            fname = image
             path = os.path.join(image_dir, fname)
             self.paths.append(path)
 
-            num_boxes = (len(splitted) - 1) // 5
+            data = self.parse_annotations(os.path.join(annotation_dir,
+                            fname.replace(".jpg", ".xml")))
+
             box, label = [], []
-            for i in range(num_boxes):
-                x1 = float(splitted[5*i + 1])
-                y1 = float(splitted[5*i + 2])
-                x2 = float(splitted[5*i + 3])
-                y2 = float(splitted[5*i + 4])
-                c  =   int(splitted[5*i + 5])
+            for i in range(data['num_boxes']):
+                if data['c'][i] not in label_info:
+                    continue
+
+                x1 = data['x1'][i]
+                y1 = data['y1'][i]
+                x2 = data['x2'][i]
+                y2 = data['y2'][i]
+                c  = label_info[data['c'][i]]
                 box.append([x1, y1, x2, y2])
                 label.append(c)
+
             self.boxes.append(torch.Tensor(box))
             self.labels.append(torch.LongTensor(label))
 
         self.num_samples = len(self.paths)
+
+    def get_class_label_dict(self, label_txt):
+        lines = []
+
+        label_info = {}
+
+        with open(label_txt, 'r') as label_file:
+            lines = label_file.readlines()
+
+        for line in lines:
+            line = line.replace('\n', '')
+            
+            token = line.split('|')
+
+            label_info[token[0]] = int(token[1])
+
+        return label_info
+
+
+    def parse_annotations(self, annotation_xml):
+        xml_code = []
+        with open(annotation_xml, 'r') as xml:
+            xml_code = xml.readlines()
+
+        is_object = False
+
+        c = []
+        x1 = []
+        y1 = []
+        x2 = []
+        y2 = []
+
+        for line in xml_code:
+            line = line.replace('\n', '')
+
+            if '</object>' in line:
+                is_object = False
+
+            if is_object:
+                if "<name>" in line:
+                    name = self.get_info_from_tag(line, '<name>')
+                    c.append(name)
+
+                if "<xmin>" in line:
+                    x_coord = self.get_info_from_tag(line, '<xmin>')
+                    x1.append(float(x_coord))
+
+                if "<ymin>" in line:
+                    y_coord = self.get_info_from_tag(line, '<ymin>')
+                    y1.append(float(y_coord))
+
+                if "<xmax>" in line:
+                    x_coord = self.get_info_from_tag(line, '<xmax>')
+                    x2.append(float(x_coord))
+
+                if "<ymax>" in line:
+                    y_coord = self.get_info_from_tag(line, '<ymax>')
+                    y2.append(float(y_coord))
+                    
+            if '<object>' in line:
+                is_object = True
+
+        return {"num_boxes": len(c), 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'c': c}
+
+    def get_info_from_tag(self, line, open_tag):
+        close_tag = '</' + open_tag[1:]
+        info = line.strip().replace(open_tag, '').replace(close_tag, '')
+
+        return info
 
     def __getitem__(self, idx):
         path = self.paths[idx]
