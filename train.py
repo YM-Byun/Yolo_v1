@@ -299,5 +299,4 @@ if __name__ == "__main__":
 
         print (f'\nEpoch [{epoch+1}/{args.epochs}], Val loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f}')
 
-    writer.close()
     logfile.close()
