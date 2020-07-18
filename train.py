@@ -265,7 +265,10 @@ if __name__ == "__main__":
             imgs, target = Variable(imgs), Variable(targets)
 
             if is_cuda:
-                imgs, target = imgs.cuda(args.gpu_num), target.cuda(args.gpu_num)
+                if args.gpu_num != -1:
+                    imgs, target = imgs.cuda(args.gpu_num), target.cuda(args.gpu_num)
+                else:
+                    imgs, target = imgs.cuda(), target.cuda()
 
             with torch.no_grad():
                 preds = yolo(imgs)
