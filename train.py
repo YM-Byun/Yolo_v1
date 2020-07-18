@@ -127,7 +127,7 @@ def save_checkpoint(state, epoch, log_dir):
 
     for name in filenames:
         if name.startswith('checkpoint'):
-            os.remove(name)
+            os.remove(log_dir + "/" + name)
             break
 
     checkpoint_file = log_dir + "/checkpoint_" + str(epoch + 1) + ".pth"
