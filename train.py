@@ -113,15 +113,11 @@ def get_lr(optimizer):
 def isPrint(i, length):
     isPrint = False
 
-    if i < 1000:
-        if i % 100 == 0:
-            isPrint = True
-
-    elif i == length - 1:
+    if i == length - 1:
         isPrint = True
 
     else:
-        if i % 500 == 0:
+        if i % 50 == 0:
             isPrint = True
 
     return isPrint
@@ -183,10 +179,13 @@ if __name__ == "__main__":
 
 
     yolo = Yolo_v1(pretrain_model.features)
-    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layer, device_ids=[args.gpu_num])
+    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layer)
 
     if is_cuda:
-        yolo.cuda(args.gpu_num)
+        if args.gpu_num != -1:
+            yolo.cuda(args.gpu_num)
+        else:
+            yolo.cuda()
 
     # Loss func
     criterion = Yolo_loss()
@@ -232,8 +231,12 @@ if __name__ == "__main__":
             targets = Variable(targets)
 
             if is_cuda:
-                imgs = imgs.cuda(args.gpu_num, non_blocking=True)
-                targets = targets.cuda(args.gpu_num, non_blocking=True)
+                if args.gpu_num != -1:
+                    imgs = imgs.cuda(args.gpu_num, non_blocking=True)
+                    targets = targets.cuda(args.gpu_num, non_blocking=True)
+
+                else:
+                    imgs, targets = imgs.cuda(), targets.cuda()
 
             # Forawrd
             preds = yolo(imgs)
@@ -248,7 +251,8 @@ if __name__ == "__main__":
             optimizer.step()
 
             if isPrint(i, len(train_loader)):
-                print (f'\tEpoch [{epoch+1}/{args.epochs}]  |  Iter [{i+1}/{len(train_loader)}]  |  LR: {lr:.6f},  Loss: {loss_iter:.4f}, Avg Loss: {total_loss / float(total_batch)}')
+                print (f'\tEpoch [{epoch+1}/{args.epochs}]  |  Iter [{i+1}/{len(train_loader)}]  |  LR: {lr:.6f}')
+                print (f'\t    Loss: {loss_iter:.4f}, Avg Loss: {(total_loss / float(total_batch)):.6f}')
 
 
         # val

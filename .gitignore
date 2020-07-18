@@ -8,6 +8,7 @@ dataset/train/images/**
 dataset/train/annotations/**
 dataset/val/images/**
 dataset/val/annotations/**
+tmp/
 
 # For Test
 !dataset/train/images/008961.jpg
