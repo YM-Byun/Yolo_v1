@@ -82,8 +82,8 @@ class Yolo_loss(nn.Module):
 
         # Class info
         # shape: [Number of object, class]
-        class_pred = coord_pred[:, 5*B:]
-        class_target = coord_target[:, 5*B:]
+        class_pred = coord_pred[:, 5*B:].cuda()
+        class_target = coord_target[:, 5*B:].cuda()
 
 
         # Cells which not contains object
@@ -99,8 +99,8 @@ class Yolo_loss(nn.Module):
         for b in range(B):
             noobj_conf_mask[:,4+b*5]=1
 
-        noobj_pred_conf = noobj_pred[noobj_conf_mask]
-        noobj_target_conf = noobj_target[noobj_conf_mask]
+        noobj_pred_conf = noobj_pred[noobj_conf_mask].cuda()
+        noobj_target_conf = noobj_target[noobj_conf_mask].cuda()
 
         loss_noobj = F.mse_loss(noobj_pred_conf, noobj_target_conf, reduction='sum')
 
@@ -141,9 +141,9 @@ class Yolo_loss(nn.Module):
 
         bbox_target_iou = Variable(bbox_target_iou).cuda()
 
-        bbox_pred_response = bbox_pred[coord_response_mask].view(-1, 5)
-        bbox_target_response = bbox_target[coord_response_mask].view(-1, 5)
-        target_iou = bbox_target_iou[coord_response_mask].view(-1, 5)
+        bbox_pred_response = bbox_pred[coord_response_mask].view(-1, 5).cuda()
+        bbox_target_response = bbox_target[coord_response_mask].view(-1, 5).cuda()
+        target_iou = bbox_target_iou[coord_response_mask].view(-1, 5).cuda()
 
 
         loss_xy = F.mse_loss(bbox_pred_response[:, :2], bbox_target_response[:, :2], reduction='sum')

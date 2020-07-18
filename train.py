@@ -126,7 +126,7 @@ def save_checkpoint(state, epoch, log_dir):
     filenames = os.listdir(log_dir)
 
     for name in filenames:
-        if name.startwith('checkpoint'):
+        if name.startswith('checkpoint'):
             os.remove(name)
             break
 
@@ -152,12 +152,12 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size,
             shuffle=False, num_workers=8)
 
-    print ("Loaded dataset!")
+    print ("\nLoaded dataset!")
     print (f"\tNumber of training images: {len(train_dataset)}")
     print (f"\tNumber of validation images: {len(val_dataset)}\n")
 
 
-    print ("=======================================\n\n")
+    print ("=======================================\n")
 
     pretrain_model = Yolo_pretrain(conv_only=True, init_weight=True)
     pretrain_model.features = torch.nn.DataParallel(pretrain_model.features)
