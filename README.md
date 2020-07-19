@@ -16,3 +16,11 @@
 ### 4. extensive data augmentation
 
 ## Inference
+
+
+
+
+- Weight file: https://drive.google.com/drive/folders/1rOx_GTWYJ0CaKGHfbETsX77j7uu71Zf1?usp=sharing
+
+### Reference
+https://github.com/motokimura/yolo_v1_pytorch
