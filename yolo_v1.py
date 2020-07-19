@@ -25,7 +25,7 @@ class Yolo_v1(nn.Module):
             *self.make_conv_layer(1024, 1024, 3, 1, 1)
         )
 
-        self.conv_layer = nn.Sequential(
+        self.conv_layers = nn.Sequential(
             self.layer1,
             self.layer2)
         
@@ -55,7 +55,7 @@ class Yolo_v1(nn.Module):
         
     def forward(self, x):
         x = self.features(x)
-        x = self.conv_layer(x)
+        x = self.conv_layers(x)
         x = self.fc(x)
         
         x = x.view(-1, self.S, self.S, 5 * self.B + self.C)

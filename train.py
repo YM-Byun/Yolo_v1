@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
 
     yolo = Yolo_v1(pretrain_model.features)
-    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layer)
+    yolo.conv_layers = torch.nn.DataParallel(yolo.conv_layers)
 
     if is_cuda:
         if args.gpu_num != -1:
