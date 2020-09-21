@@ -19,4 +19,4 @@
 
 
 ## Experiment
-mAP 0.517
+mAP 51.7  |  63.4 (In paper)
