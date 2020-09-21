@@ -13,10 +13,20 @@
 ### 3. Different learning rate for epochs
 ### 4. extensive data augmentation
 
-## Inference
+## Experiment
+mAP 51.7 (Implement)
+    63.4 (In paper)
+
+Class | aeroplane | bicycle | bird | boat | bottle | bus | car | cat | chair | cow
+---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+mAP | 74.8 | 51.7 | 56.9 | 36.6 | 16.0 | 68.0 | 46.3 | 85.1 | 26.7 | 51.7
+
+Class | dining table | dog | horse | motorbike | person | potted plant | sheep | sofa | train | tv&monitor
+---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+mAP | 37.2 | 77.9 | 52.6 | 54.8 | 61.6| 19.1 | 54.1 | 43.8 | 75.4 | 43.7
+
+
+
+## Test Images
 ![horse_and_person](https://user-images.githubusercontent.com/29909314/93767322-d3412080-fc52-11ea-8c9f-0fffd2274e2d.png)
 ![result](https://user-images.githubusercontent.com/29909314/93767250-b0af0780-fc52-11ea-9134-5f20d93a4c75.png)
-
-
-## Experiment
-mAP 51.7  |  63.4 (In paper)
