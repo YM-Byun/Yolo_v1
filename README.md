@@ -14,4 +14,5 @@
 ### 4. extensive data augmentation
 
 ## Inference
+![horse_and_person](https://user-images.githubusercontent.com/29909314/93767322-d3412080-fc52-11ea-8c9f-0fffd2274e2d.png)
 ![result](https://user-images.githubusercontent.com/29909314/93767250-b0af0780-fc52-11ea-9134-5f20d93a4c75.png)
