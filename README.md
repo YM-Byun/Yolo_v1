@@ -3,9 +3,7 @@
 
 ## Pre-training
 ### 1. pretraing for 20 convolution layers using ImageNet 2012 datasets.
- - using 980 classes, 800 images for each class.
- - 55~58% Acc
-
+ - Top 5 87% acc
 
 ## Training
 ### 1. Using PASCAL 2007, 2012 datasets.
@@ -16,3 +14,4 @@
 ### 4. extensive data augmentation
 
 ## Inference
+![result](https://user-images.githubusercontent.com/29909314/93767250-b0af0780-fc52-11ea-9134-5f20d93a4c75.png)
