@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from pre_train.util_layers import Flatten
+from pretrain.model import Yolo_pretrain
 
 class Yolo_v1(nn.Module):
     def __init__(self, features, S=7, B=2, C=20):
@@ -30,7 +30,6 @@ class Yolo_v1(nn.Module):
             self.layer2)
         
         self.fc = nn.Sequential(
-            Flatten(),
             nn.Linear(7*7*1024, 4096),
             nn.LeakyReLU(),
             nn.Dropout(p=0.5),
@@ -56,6 +55,7 @@ class Yolo_v1(nn.Module):
     def forward(self, x):
         x = self.features(x)
         x = self.conv_layers(x)
+        x = x.view(x.size(0), -1)
         x = self.fc(x)
         
         x = x.view(-1, self.S, self.S, 5 * self.B + self.C)
@@ -64,8 +64,21 @@ class Yolo_v1(nn.Module):
 
 
 if __name__ == '__main__':
+    pretrain_model = Yolo_pretrain(conv_only=True, init_weight=True)
+    pretrain_model.features = pretrain_model.features.cuda()
+
+    src_state_dict = torch.load('./pretrain/weight/best.pth')['state_dict']
+    dst_state_dict = pretrain_model.state_dict()
+
+    for key in dst_state_dict.keys():
+        dst_state_dict[key] = src_state_dict[key]
+
+    pretrain_model.load_state_dict(dst_state_dict)
+
     dummy_data = torch.rand((10, 3, 448, 448))
-    yolo = Yolo_v1(7, 2, 20)
+    yolo = Yolo_v1(pretrain_model.features, 7, 2, 20).cuda()
+
+    dummy_data = dummy_data.cuda()
     x = yolo(dummy_data)
 
     print ("Yolo V1 network")

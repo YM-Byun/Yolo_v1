@@ -1,0 +1,14 @@
+Epoch 1 | Val Loss: 3.7839 | LR: 0.0010 | best
+Epoch 2 | Val Loss: 3.4768 | LR: 0.0010 | best
+Epoch 3 | Val Loss: 3.2909 | LR: 0.0010 | best
+Epoch 4 | Val Loss: 3.1634 | LR: 0.0010 | best
+Epoch 5 | Val Loss: 3.0082 | LR: 0.0010 | best
+Epoch 6 | Val Loss: 2.9681 | LR: 0.0010 | best
+Epoch 7 | Val Loss: 2.8590 | LR: 0.0010 | best
+Epoch 8 | Val Loss: 2.7885 | LR: 0.0010 | best
+Epoch 9 | Val Loss: 2.7021 | LR: 0.0010 | best
+Epoch 10 | Val Loss: 2.6592 | LR: 0.0010 | best
+Epoch 11 | Val Loss: 2.6080 | LR: 0.0010 | best
+Epoch 12 | Val Loss: 2.5642 | LR: 0.0010 | best
+Epoch 13 | Val Loss: 2.5405 | LR: 0.0010 | best
+Epoch 14 | Val Loss: 2.5158 | LR: 0.0010 | best

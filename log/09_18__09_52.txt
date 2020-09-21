@@ -1,0 +1,1 @@
+Epoch 1 | Val Loss: 5.5533 | LR: 0.0100 | best

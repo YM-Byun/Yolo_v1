@@ -6,7 +6,7 @@ import torch
 from torch.autograd import Variable
 import torchvision.transforms as transforms
 
-from pre_train.model import Yolo_pretrain
+from pretrain.model import Yolo_pretrain
 from yolo_v1 import Yolo_v1
 
 
@@ -76,18 +76,17 @@ class YOLODetector:
         # Load YOLO model.
         print("Loading YOLO model...")
         pretrain = Yolo_pretrain(conv_only=True, init_weight=True)
-        pretrain.features = torch.nn.DataParallel(pretrain.features)
-        self.yolo = Yolo_v1(pretrain.features)
-        self.yolo.conv_layer = torch.nn.DataParallel(self.yolo.conv_layer)
+        pretrain.features = pretrain.features.cuda()
+        self.yolo = Yolo_v1(pretrain.features).cuda()
         self.yolo.load_state_dict(torch.load(model_path))
-        self.yolo.cuda()
+        
         print("Done loading!")
 
         self.yolo.eval()
 
-        self.S = self.yolo.feature_size
-        self.B = self.yolo.num_bboxes
-        self.C = self.yolo.num_classes
+        self.S = self.yolo.S
+        self.B = self.yolo.B
+        self.C = self.yolo.C
 
         self.class_name_list = class_name_list if (class_name_list is not None) else list(VOC_CLASS_BGR.keys())
         assert len(self.class_name_list) == self.C
@@ -288,7 +287,7 @@ if __name__ == '__main__':
     image_path = 'test.jpg'
     out_path = 'result.png'
     # Path to the yolo weight.
-    model_path = 'result/model_best.pth'
+    model_path = 'weight/best_model.pth'
     # GPU device on which yolo is loaded.
     gpu_id = 0
 

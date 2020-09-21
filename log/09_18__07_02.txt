@@ -1,0 +1,10 @@
+Epoch 1 | Val Loss: 5.9112 | LR: 0.0100 | best
+Epoch 2 | Val Loss: nan | LR: 0.0100
+Epoch 3 | Val Loss: nan | LR: 0.0100
+Epoch 4 | Val Loss: nan | LR: 0.0100
+Epoch 5 | Val Loss: nan | LR: 0.0100
+Epoch 6 | Val Loss: nan | LR: 0.0100
+Epoch 7 | Val Loss: nan | LR: 0.0100
+Epoch 8 | Val Loss: nan | LR: 0.0100
+Epoch 9 | Val Loss: nan | LR: 0.0100
+Epoch 10 | Val Loss: nan | LR: 0.0100
