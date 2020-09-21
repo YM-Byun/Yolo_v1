@@ -3,7 +3,7 @@
 
 ## Pre-training
 ### 1. pretraing for 20 convolution layers using ImageNet 2012 datasets.
- - Top 5 87% acc
+ - until Top 5 87% acc
 
 ## Training
 ### 1. Using PASCAL 2007, 2012 datasets.
@@ -14,7 +14,7 @@
 ### 4. extensive data augmentation
 
 ## Experiment
-mAP 51.7 (Implement)
+mAP 51.7 (Implement) <br>
     63.4 (In paper)
 
 Class | aeroplane | bicycle | bird | boat | bottle | bus | car | cat | chair | cow
